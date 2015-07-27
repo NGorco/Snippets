@@ -84,3 +84,18 @@ var localDB = (function DB (){
 
 	return instance;
 })();
+
+/**
+ * 
+ * Examples
+  
+  tl.push(
+  ["INSERT INTO properties(id,objid, prop_id, prop_value, add_objid) VALUES (NULL,?, ?, ?,?)",
+	[id, prop_id, prop_value, objid]
+	
+OR
+	
+  tl.push("DROP TABLE IF EXISTS properties");
+]);
+
+ * */
