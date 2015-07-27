@@ -96,6 +96,8 @@ var localDB = (function DB (){
 OR
 	
   tl.push("DROP TABLE IF EXISTS properties");
+  
+  instance.transactionArr(tl, function(){alert('ololo')});
 ]);
 
  * */
