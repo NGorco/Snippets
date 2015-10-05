@@ -1,0 +1,44 @@
+#mq_voting{
+	display:block;
+}
+div#mq_voting .controls {
+    height: 50px;
+    cursor: pointer;
+    border: 1px solid darkgrey;
+    width: 50px;
+    border-radius: 3px;
+}
+div#mq_voting .like {
+    background: url(../images/like.png) no-repeat center #D8DAE0;
+}
+div#mq_voting .dislike {
+    background: url(../images/dislike.png) no-repeat center #D8DAE0;
+}
+#mq_voting > div:hover, #mq_voting > div.clicked {opacity: 1}
+#mq_voting > div{
+	display: inline-block;
+    opacity: 0.4;
+    vertical-align: middle;
+}
+#mq_voting .counter {
+    opacity: 1;
+    margin: 0px 6px;
+    width: 36px;
+    font-size: 20px;
+    text-align: center;
+}
+
+#article-gallery #mq_voting .controls {
+    height: 25px;
+    width: 27px;
+}
+
+#article-gallery div#mq_voting .counter {
+    width: 21px;
+}
+#article-gallery div#mq_voting {
+    float: left;
+}
+#mq_voting + .review-rating {
+    text-align: right;
+}

@@ -1,0 +1,28 @@
+<ul id="settings">
+	<li><input onclick="toggleQl()" type="checkbox" id="ql" /><label for="ql"><strong>  Режим QuickDesk:</strong></label> <br /><p> при попадании на главную, осуществляется переход сразу в список заметок. Они сами отображаются без нажатия на кнопку "Список". <br /><br />
+	<span style="color:red;font-size:11px">(пока-что работает только при отключенной очистке кукис)</span></p>
+	
+	<script type="text/javascript">
+	if(getFromSt('quickdesk_quicklogin')=='true'){
+			$("#settings #ql").attr('checked','true');
+		}else{
+			$("#settings #ql").removeAttr('checked');
+		}
+	</script>
+	</li>
+</ul>
+<p><strong>Как отключить очистку кукис в твоем бразуере?</strong></p>
+	<ul>
+		<li><strong>Chrome</strong>: Настройки - Показать доп настройки - Настройки контента - Добавить исключение. В шаблон вписываешь адрес сайта и выбираешь "разрешить". </li>
+		<li><strong>Opera</strong>: Настройки - Конфиденцильность и безопасность - Cookies. Тут как в Chrome - добавляешь исключение.</li>
+		<li><strong>Mozilla</strong>: Настройки - Приватность - История.В выпадающем списке выбрать "будет запоминать историю". </li>
+		<li><strong>Safari</strong>: ...</li>
+		<li><strong>IE</strong>: Сервис - Свойства обозревателя - Конфиденциальность - Узлы. Вписываешь в поле адрес сайта, жмешь Разрешить, ОК.</li>
+	</ul>
+	
+<style type="text/css">
+#settings li{
+list-style-type:none;
+}
+
+</style>

@@ -15,7 +15,7 @@ function HandyAjax() {
    var self = this;
    self.request = function(method,params,callback_fnc, data_type){
         
-        if( 
+        if(	
             (
                 typeof method !== 'string'&&
                 typeof method !== "function"
@@ -44,7 +44,7 @@ function HandyAjax() {
                     
                     alert(JSONobj.notify_text);
                     throw "Core.request:: " + JSONobj.notify_text;
-                }       
+                }		
             }else{
 
                 if(data_type == 'raw'){

@@ -149,23 +149,23 @@ HandyAjax.prototype.addToFavourite = function(id){
   });
 };
 
-HandyAjax.prototype.formSubmit = function(form){
+HandyAjax.prototype.formSubmit = function(form, clbk)
+{
+    var $ = $ || jQuery;
+    clbk = clbk || function(){};
+    var params = $(form).serializeObject();
 
-  var params = $(form).serializeObject();
+    var action = $(form).attr("action");
 
-  params.submitAction = $(form).attr("action");
+    this.request(action, params, function(data){
 
-  this.request(arguments.callee, params, function(data){
-      
-      if(data.status == 'success'){
-        $(form).parent().hide().find("input, textarea").val('');
-        $("#cap_gen").click();
-        alert('Ваше письмо успешно оправлено');
-      
-      }else{
-        alert(data.user_error);
-      }
-  });
+        if(data.status == 'success'){
+
+            clbk();
+        }else{
+            alert(data.user_error);
+        }
+    });
 };
 
 HandyAjax.prototype.contactToSeller = function(form){

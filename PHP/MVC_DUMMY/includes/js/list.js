@@ -1,0 +1,9 @@
+﻿$(document).ready(function(){
+	$("#left").click(function(){
+		$.get('/note/get_list',function(data){
+			if(data){
+				$("#list").html(data).fadeIn();
+			}
+		})
+	})
+})
