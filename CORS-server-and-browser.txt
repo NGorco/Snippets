@@ -1,0 +1,48 @@
+Server settings
+
+/**
+ * Headers
+ */
+
+Access-Control-Allow-Credentials:true
+Access-Control-Allow-Methods:GET, POST, PATCH, HEAD, OPTIONS
+Access-Control-Allow-Origin:http://testing.cl20398.tmweb.ru
+Access-Control-Expose-Headers:X-Api-Version, X-Pagination-Current-Page, X-Pagination-Page-Count, X-Pagination-Per-Page, X-Pagination-Total-Count, X-Location, Location, Link, P3P
+
+P3P - для IE
+P3p:CP="IDC IVD UNI"
+
+/**
+ * JS (jQuery)
+ */
+
+$.ajax({
+	url: 'url',
+	method: 'POST | GET | PATCH etc.',
+	xhrFields: {
+		withCredentials: true // to save and send cookies on/from front 
+	}
+});
+
+
+/**
+ * To send form data - some files
+ */
+
+var Data = new FormData();
+
+var input = doc.getElById('inputFile');
+
+Data.append(input.files[0]);
+
+$.ajax({
+	url: ...,
+	method: POST,
+	processData: false,
+	contentType: false,
+	xhrFields: {
+		withCredentials: true /// if need to save some cookies from reponse
+	},
+	data: Data
+})
+

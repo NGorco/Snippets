@@ -16,15 +16,23 @@ function CORS(url, clbk, notJSON)
 	/**
 	* Выполнение запроса
 	*/
-	function doCallOtherDomain(url, clbk, notJSON)
+	function doCallOtherDomain(url, clbk, params, notJSON)
 	{
 		if(notJSON == undefined) notJSON = false;
 		if(url == '' || typeof url != 'string') return false;
 		
+		/**
+		 * Настройки  по-умолчанию
+		 * @type {object}
+		 */
+		params = params || {
+			method: 'GET'
+		};
+		
 		var XHR = window.XDomainRequest || window.XMLHttpRequest;
 		var xhr = new XHR();
 		
-		xhr.open('GET', url, true);
+		xhr.open(params.method, url, true);
 
 		xhr.onload = function()
 		{
