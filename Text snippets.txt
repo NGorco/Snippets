@@ -1,0 +1,2 @@
+Update PHP MY ADMIN
+sudo dpkg-reconfigure phpmyadmin

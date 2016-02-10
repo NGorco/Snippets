@@ -42,7 +42,7 @@ $.ajax({
 	contentType: false,
 	xhrFields: {
 		withCredentials: true /// if need to save some cookies from reponse
-	},
+	},z
 	data: Data
 })
 
