@@ -1,1 +1,0 @@
-<?=$ITEM['DETAIL_TEXT']?>
