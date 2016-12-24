@@ -1,2 +1,7 @@
 Update PHP MY ADMIN
 sudo dpkg-reconfigure phpmyadmin
+
+Vagrant installation issues
+
+- Builder::GemfileNotFound - fixed with no-cyrillic user name (and user dir)
+- Freezing on SSH auth method - 

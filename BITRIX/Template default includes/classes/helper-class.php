@@ -4,68 +4,26 @@
 /**
 * Custom helping functions
 */
-class CHelper
-{
-	
-	public static $TEMPLATE_OPTION_IBLOCK = 5;
-	public static $ELEMENT_LOOP_DIR = '/bitrix/templates/adverts/includes/loops';
-	public static $ELEMENT_LOOP_DEFAULT = "/bitrix/templates/adverts/includes/loops/default.php";
+class CHelper {
 
-	static function template_option($OPTION_CODE, $params = array())
-	{
-		
-		if(!isset( $params['TYPE'] )){
-			$params['TYPE'] = 'DETAIL_TEXT';
-		};
-		
-		$res = CIBlockElement::GetList(array(), array("CODE" => $OPTION_CODE, "IBLOCK_ID" => self::$TEMPLATE_OPTION_IBLOCK));
-		$res = $res->GetNext();		
+	static function inc_file( $path ) {
 
-		if($params['TYPE'] == 'FULL'){
-			if($res) return $res;
-		}else{
-			if($res) return $res[$params['TYPE']];	
-		}
-		
+		global $APPLICATION;
+
+		$APPLICATION->IncludeFile( $path, Array(), Array(
+	    	"MODE"      => "html",
+	    ));
 	}
 
-	static  function elements($args, $template = 'default', $raw = false){
+	static function min($price, $discount) {
 
-		if(empty($args)) return array();
-		$out = Array(); //if raw data
+		if ( $discount > 0 ) {
 
-		$res = CIBlockElement::GetList(array_shift($args),array_shift($args), array_shift($args), array_shift($args), array_shift($args));
-		while($ITEM = $res->GetNext()){
+			return min($price, $discount);
+		} else {
 
-			if($raw){
-				$out[$ITEM['ID']] = $ITEM;
-				continue;
-			}
-
-			if(file_exists($_SERVER['DOCUMENT_ROOT'] . self::$ELEMENT_LOOP_DIR . "/" . $template . '-loop.php')){
-				include($_SERVER['DOCUMENT_ROOT'] . self::$ELEMENT_LOOP_DIR . "/"  . $template . '-loop.php');	
-			}else{
-				include($_SERVER['DOCUMENT_ROOT'] . self::$ELEMENT_LOOP_DEFAULT);
-			}			
+			return $price;
 		}
-
-		if($raw){
-			return $out;
-		}
-	}
-
-	static  function element($ID, $IBLOCK_ID, $selectFields = Array()){
-
-		$filter = Array("IBLOCK_ID" => $IBLOCK_ID);
-
-		if(is_numeric($ID)){
-			$filter['ID'] = $ID;
-		}else{
-			$filter['CODE'] = $IBLOCK_ID;
-		}
-
-		$res = CIBlockElement::GetList(Array(),$filter, false, Array(), $selectFields);		
-		return $res->GetNext();
 	}
 
 	static function price_format($price){
@@ -77,42 +35,50 @@ class CHelper
 		}
 	}
 
-	static  function section($ID, $IBLOCK_ID, $selectFields = Array()){
+	static function get_product_popup_array( $prodID ) {
 
-		$filter = Array("IBLOCK_ID" => $IBLOCK_ID);
+		$rsOffers = CIBlockElement::GetList( [], [
 
-		if(is_numeric($ID)){
-			$filter['ID'] = $ID;
-		}else{
-			$filter['CODE'] = $IBLOCK_ID;
-		}
+			'IBLOCK_ID' => 3, 'PROPERTY_31' => $prodID ],
+			false,
+			[],
+			['PROPERTY_VALUE_ML', 'DETAIL_PICTURE', 'NAME', 'ID']);
 
-		$res = CIBlockSection::GetList(Array(),$filter, false, $selectFields,  Array());		
-		return $res->GetNext();
-	}
+		$offers = [];
 
-	static  function sections($args, $template = 'default', $raw = false){
+		while ( $offer = $rsOffers->GetNext() ) {
 
-		if(empty($args)) return array();
-		$out = Array(); //if raw data
+			$price = CHelper::getPriceForUser( $offer['ID'], 'min' );
 
-		$res = CIBlockSection::GetList(array_shift($args),array_shift($args),array_shift($args),  array_shift($args),array_shift($args));
-		while($ITEM = $res->GetNext()){
-			if($raw){
-				$out[$ITEM['ID']] = $ITEM;
-				continue;
+			if ( floatval( $price ) > 0 ) {
+
+				$offer['PRICE'] = $price;
+			} else {
+
+				$offer['PRICE'] = 0;
 			}
 
-			if(file_exists($_SERVER['DOCUMENT_ROOT'] . self::$ELEMENT_LOOP_DIR . "/" . $template . '-loop.php')){
-				include($_SERVER['DOCUMENT_ROOT'] . self::$ELEMENT_LOOP_DIR . "/"  . $template . '-loop.php');	
-			}else{
-				include($_SERVER['DOCUMENT_ROOT'] . self::$ELEMENT_LOOP_DEFAULT);
-			}
+			$pic = CFile::GetFileArray( $offer['DETAIL_PICTURE'] );
+
+			$offers[] = [
+				'id' => $offer['ID'],
+				'name' => $offer['NAME'],
+				'price' => $offer['PRICE'],
+				'picture' =>  $pic['SRC'],
+				'ml' => intval( $offer['PROPERTY_VALUE_ML_VALUE'] )
+			];
 		}
 
-		if($raw){
-			return $out;
-		}
+		$prod = CIBlockElement::GetList( [], ['IBLOCK_ID' => 2, 'ID' => $prodID], false, [], ['ID', 'NAME', 'PROPERTY_DISP_WHAT_FOR']);
+
+		$prod = $prod->GetNext();
+
+		return [
+			'name' => $prod['NAME'],
+			'id' => $prod['ID'],
+			'used_for' => $prod['PROPERTY_DISP_WHAT_FOR_VALUE'],
+			'offers' => $offers
+		];
 	}
 
 	static function titleCut($str,$len=1000){
@@ -122,12 +88,12 @@ class CHelper
 		}else{
 			return $str;
 		}
-	} 
+	}
 
 	static function resizePic($pic, $width, $height, $attr_text = ''){
 
 		if(!empty($pic)&&(int)$width>0&&(int)$height>0){
-			$pic = CFile::ResizeImageGet($pic, array('width'=>$width, 'height'=>$height), BX_RESIZE_IMAGE_PROPORTIONAL, true); 
+			$pic = CFile::ResizeImageGet($pic, array('width'=>$width, 'height'=>$height), BX_RESIZE_IMAGE_PROPORTIONAL, true);
 			return "<img  src='".$pic['src']."' ".$attr_text."/>";
 		}else{
 
@@ -135,140 +101,6 @@ class CHelper
 
 				return '<div class="nopic" style=\'width:' . $width . 'px; margin:0 auto;\'><div style=\'display:table-cell; vertical-align:middle;width:' . $width .'px; height: ' . $height . 'px;  text-align: center;\' class=\'resizedPicture\'><img style=\'max-width:100%;max-height:100%;min-height:initial; min-width:initial;height:auto\' src=\''. SITE_TEMPLATE_PATH . '/img/nopic.png\'></div></div>';
 			}
-			return false;
-		}
-	}
-
-	static function featAdvOptDetail($ID){
-
-		if(!is_numeric($ID)) return false;
-
-		$adv = self::element($ID, 2, Array('ID', 'NAME', 'PROPERTY_9', 'IBLOCK_SECTION_ID'));
-
-		$section = self::section($adv['IBLOCK_SECTION_ID'], 2, Array('ID', 'UF_FEAT_ADV_OPTDET'));
-
-		$options = self::advertOptions($adv['PROPERTY_9_VALUE']);
-	
-		return $options[$section['UF_FEAT_ADV_OPTDET']];
-	}
-
-	static function advertOptions($JSON_str){
-
-
-		$out = Array();
-		$JSON = json_decode(str_replace('&quot;', '"', $JSON_str), TRUE);
-		
-		if(!is_array($JSON)) return Array();
-
-		$options = self::sections(Array(
-
-			Array("sort" => "ASC"),
-			Array("IBLOCK_ID" => 4, "ID" => array_keys($JSON)),
-			true,
-			Array("NAME","ID","DESCRIPTION")
-		),'',true);
-
-		foreach ($options as $key => $option) {
-			
-			$value = '';
-			if($option['ELEMENT_CNT'] == 0){
-				$value = $JSON[$option['ID']];
-			}else{
-				
-				$elem = CHelper::element($JSON[$option['ID']], 4);
-
-				if(!empty($elem) && !empty($JSON[$option['ID']])){
-
-					$value = $elem['NAME'];
-				}
-			}
-
-			if($option['DESCRIPTION'] != ''){
-				$value = str_replace("#VAL#", $value, $option['DESCRIPTION']);
-			}
-
-			$out[$option['ID']] = Array('NAME' => $option['NAME'], "VALUE" => ($value == '') ? 'Не указано' : $value);
-		}
-
-		return $out;
-	}
-
-	static function blockViewAdverts($ITEMS,$arResult, $template = 'block-view-advert'){ //Отображение блоков для каталога
-
-		foreach($ITEMS as $key => $PROD){
-
-			$ITEMS[$key]['RAW_PROPS'] = $PROD['DISPLAY_PROPERTIES'];
-			$ITEMS[$key]['DISPLAY_PROPERTIES'] = Array();
-			$props = &$ITEMS[$key]['DISPLAY_PROPERTIES'];
-
-			$crtDate = new DateTime($PROD['DATE_CREATE']);
-
-			$props['CREATE_DATE_DISPLAY'] = $crtDate->format('H:i, d.m.Y');
-
-			foreach ($PROD['DISPLAY_PROPERTIES'] as $key => $value) {
-				
-				$props[$key] = $value['VALUE'];
-			}
-
-			// Получаем список свойств для блочного вида каталога
-
-			$all_options_list = self::advertOptions($PROD['DISPLAY_PROPERTIES']['OPTIONS']['VALUE']);
-
-			$section = self::section($arResult['ID'], 2, Array('UF_ADVS_OPTIONS'));
-
-			$props['OPTIONS'] = array_intersect_key ($all_options_list, array_flip(unserialize($section['UF_ADVS_OPTIONS'])));
-		}
-
-
-		foreach ($ITEMS as $ITEM) {
-
-			if(file_exists($_SERVER['DOCUMENT_ROOT'] . self::$ELEMENT_LOOP_DIR . "/" . $template . '-loop.php')){
-				include($_SERVER['DOCUMENT_ROOT'] . self::$ELEMENT_LOOP_DIR . "/"  . $template . '-loop.php');	
-			}else{
-				include($_SERVER['DOCUMENT_ROOT'] . self::$ELEMENT_LOOP_DEFAULT);
-			}
-		}
-	}	
-
-	static function blockViewCustomAdverts($ITEMS,$arResult = '', $template = 'block-view-advert'){ //Отображение блочных объявлений в кастомных запросах
-
-		foreach($ITEMS as $key => $PROD){
-
-			$ITEMS[$key]['DISPLAY_PROPERTIES'] = Array();
-			$props = &$ITEMS[$key]['DISPLAY_PROPERTIES'];
-
-			// Получаем список свойств для блочного вида каталога
-
-			$all_options_list = self::advertOptions($PROD['PROPERTY_9_VALUE']);
-
-			$section = self::section($PROD['IBLOCK_SECTION_ID'], 2, Array('UF_ADVS_OPTIONS'));
-
-			$props['OPTIONS'] = array_intersect_key ($all_options_list, array_flip(unserialize($section['UF_ADVS_OPTIONS'])));
-		}
-
-
-		foreach ($ITEMS as $ITEM) {
-
-			if(file_exists($_SERVER['DOCUMENT_ROOT'] . self::$ELEMENT_LOOP_DIR . "/" . $template . '-loop.php')){
-				include($_SERVER['DOCUMENT_ROOT'] . self::$ELEMENT_LOOP_DIR . "/"  . $template . '-loop.php');	
-			}else{
-				include($_SERVER['DOCUMENT_ROOT'] . self::$ELEMENT_LOOP_DEFAULT);
-			}
-		}
-	}
-
-	static function emailRegistered($email){
-
-		$Cus = new CUser();
-
-		$by = 'timestamp_x';
-		$order = 'ASC';
-		$res = $Cus->GetList($by, $order, Array('EMAIL'=>$email));
-		$out = $res->getNext();
-		if($out['EMAIL']){
-
-			return true;
-		}else{
 			return false;
 		}
 	}
@@ -284,63 +116,158 @@ class CHelper
 	    }
 	}
 
-	static function favourControl($PROD_ID){
+	static function get_curr_basket( $summaryValues = false ) {
 
-		global $USER;
-		$res = CHighL::HL_Sel(1, Array("UF_USER_ID"=>$USER->getID()));
-		
-		$FAVS = explode('/',$res[0]['UF_FAVOUR']);
-		
-		$active = '';
-		$title = 'Добавить в избранное';
-		if(in_array($PROD_ID, $FAVS)){
+		$arID = array();
 
-			$title = 'Удалить из избранного';
-			$active = 'active';
+		$arBasketItems = array();
+
+		$dbBasketItems = CSaleBasket::GetList(
+		    [ "NAME" => "ASC", "ID" => "ASC" ],
+		    [ "FUSER_ID" => CSaleBasket::GetBasketUserID(), "LID" => SITE_ID ],
+		    false,
+		    false,
+		    [ "ID" ]
+		);
+
+		while ( $arItems = $dbBasketItems->Fetch() ) {
+
+		    $arID[] = $arItems["ID"];
 		}
-		?>
-		<span style="cursor:pointer" title="<?=$title?>" onclick="Handy.addToFavourite(<?=$PROD_ID?>)" class="like-icon <?=$active?> fv<?=$PROD_ID?>"></span>
-		<?
+
+		if ( ! empty( $arID ) ) {
+
+			$dbBasketItems = CSaleBasket::GetList(
+		    	[ "NAME" => "ASC", "ID" => "ASC" ],
+		     	[ "ID" => $arID, "ORDER_ID" => "NULL" ],
+		        false,
+		        false,
+		        [ "ID", "PRODUCT_ID", "QUANTITY", "PRICE", "NAME" ]
+		    );
+
+			while ( $arItems = $dbBasketItems->Fetch() ) {
+
+			    $arBasketItems[] = $arItems;
+			}
+
+			if ( ! $summaryValues ) {
+
+				return $arBasketItems;
+			} else {
+
+				$cnt = 0;
+				$sum = 0;
+
+				foreach( $arBasketItems as $prod ) {
+
+					$tmp_cnt = ( float ) $prod['QUANTITY'];
+					$cnt += $tmp_cnt;
+
+					$tmp_sum = ( float ) $prod['PRICE'];
+
+					$tmp_sum = $tmp_sum * $tmp_cnt;
+					$sum += $tmp_sum;
+				}
+
+				return [ 'sum' => $sum, 'cnt' => $cnt ];
+			}
+		}
 	}
 
-	static function processPic($ELEMENT_ID, $FILE_PATH, $CODE, &$PROP_AR,$PROP_VAL_ID, $PROC_TYPE,  $PARAMS = Array( "PROP_ID"=>1, "IBLOCK_ID"=>2)){
+	static function getOffersPrices( $prodID, $min = false ) {
 
-		if($PROC_TYPE == "del"){
+		$rsOffers = CIBlockElement::GetList( [],
+	     	[
+	     		'IBLOCK_ID' => 3,
+	     		'PROPERTY_31' => $prodID,
+	            '>PROPERTY_PRICE' => 0,
+	     	],
+	     	false, [ 'nTopCount' => 100 ],
+	     	[ 'ID' ]);
 
-			CIBlockElement::SetPropertyValuesEx($ELEMENT_ID, $PARAMS['IBLOCK_ID'], array(
-					$PARAMS['PROP_ID'] => Array (
-						$PROP_VAL_ID =>	Array("VALUE" => array("del" => "Y")),
-					)
-				)
-			); 
-			
-			$arFile = Array("del" => "Y","MODULE_ID" => "iblock");
+	    $offers = [];
 
-			$PROP_AR[$PARAMS['PROP_ID']][$PROP_VAL_ID] = $arFile;
-			 return CIBlockElement::SetPropertyValues($ELEMENT_ID, $PARAMS['IBLOCK_ID'], Array ($PROP_VAL_ID => Array("VALUE"=>$arFile) ), $CODE );
+	    while ( $offer = $rsOffers->GetNext() ) {
+
+	    	$offers[] = CHelper::getPriceForUser( $offer['ID'], $min );
+	    }
+
+	    return $offers;
+	}
+
+	// Offer price for current user
+	static function getPriceForUser( $ID, $min = false ) {
+
+		$arProd = CIBlockElement::GetList( [], ['ID' => $ID, 'IBLOCK_ID' => 3 ], false, [], [ 'PROPERTY_PRICE', 'PROPERTY_SALE_PRICE', 'PROPERTY_PRICE_DISCOUNT', 'PROPERTY_SALE_PRICE_DISC' ] );
+
+		$arProd = $arProd->GetNext();
+
+
+		if ( ZG_USER_TYPE == 'SALE' ) {
+
+			$prices = [
+					'PRICE' => $arProd['PROPERTY_SALE_PRICE_VALUE'],
+					'PRICE_DISCOUNT' => $arProd['PROPERTY_SALE_PRICE_DISC_VALUE']
+				];
+		} else {
+
+			$prices = [
+					'PRICE' => $arProd['PROPERTY_PRICE_VALUE'],
+					'PRICE_DISCOUNT' => $arProd['PROPERTY_PRICE_DISCOUNT_VALUE']
+				];
 		}
 
-		if($PROC_TYPE == 'update'){
+		if ( $min == 'min' ) {
 
-			CIBlockElement::SetPropertyValuesEx($ELEMENT_ID, $PARAMS['IBLOCK_ID'], array(
-					$PARAMS['PROP_ID'] => Array (
-						$PROP_VAL_ID =>	Array("VALUE" => array("del" => "Y")),
-					)
-				)
-			); 
+			return ( floatval( $prices['PRICE_DISCOUNT'] ) > 0) ? $prices['PRICE_DISCOUNT'] : $prices['PRICE'];
+		} else {
 
-			$arFile = CFile::MakeFileArray($FILE_PATH); $arFile["MODULE_ID"] = "iblock"; $arFile["del"] = "Y"; 
+			return $prices;
+		}
+	}
 
-			$PROP_AR[$PARAMS['PROP_ID']][$PROP_VAL_ID] = $arFile; 
-			return CIBlockElement::SetPropertyValues($ELEMENT_ID, $PARAMS['IBLOCK_ID'], Array ($PROP_VAL_ID => Array("VALUE"=>$arFile) ), $CODE ); 
+	static function change_catalog_sort_by() {
+
+	    if ( $_SESSION['SORT_CATALOG_BY'] == 'PROPERTY_SORT_PRICE' ) {
+
+	        $_SESSION['SORT_CATALOG_BY'] = 'PROPERTY_RATE';
+	    } else {
+
+	        $_SESSION['SORT_CATALOG_BY'] = 'PROPERTY_SORT_PRICE';
+	    }
+	}
+
+	static function change_catalog_order() {
+
+	    if ( $_SESSION['ORDER_CATALOG'] == 'ASC' ) {
+
+	        $_SESSION['ORDER_CATALOG'] = 'DESC';
+	    } else {
+
+	        $_SESSION['ORDER_CATALOG'] = 'ASC';
+	    }
+	}
+
+	static function catalog_order_sort_init() {
+
+		if ( empty( $_SESSION['SORT_CATALOG_BY'] ) ) {
+
+		    $_SESSION['SORT_CATALOG_BY'] = 'PROPERTY_SORT_PRICE';
 		}
 
-		if($PROC_TYPE == 'add'){
+		if ( empty( $_SESSION['ORDER_CATALOG'] ) ) {
 
-			$arFile = CFile::MakeFileArray($FILE_PATH); $arFile["MODULE_ID"] = "iblock"; 
+		    $_SESSION['ORDER_CATALOG'] = 'ASC';
+		}
 
-			$PROP_AR[$PARAMS['PROP_ID']][] = $arFile; 
-			return CIBlockElement::SetPropertyValueCode($ELEMENT_ID, $CODE, Array("VALUE"=>$arFile) ); 
+		if ( isset( $_GET['CATALOG_SORT'] ) ) {
+
+		    self::change_catalog_sort_by();
+		}
+
+		if ( isset( $_GET['CATALOG_ORDER'] ) ) {
+
+		    self::change_catalog_order();
 		}
 	}
 }

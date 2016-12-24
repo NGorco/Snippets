@@ -3,88 +3,69 @@
 * Класс содержит функции-обработчики AJAX-запросов
 */
 class CCallback{
-	
+
 	public static $CLBK = Array();
-	
+
 	static function router(){
-		
-		if(isset($_REQUEST)&&!empty($_REQUEST)&&method_exists("CCallback", $_REQUEST['method']."Clbk")){
-		
-			$methodName = $_REQUEST['method']."Clbk";
-			self::$methodName($_REQUEST['params']);
+
+		if ( isset( $_REQUEST ) && ! empty( $_REQUEST ) && method_exists( "CCallback", $_REQUEST['method'] . "Clbk" ) ) {
+
+			$methodName = $_REQUEST['method'] . "Clbk";
+			self::$methodName( $_REQUEST['params'] );
 			self::retJson();
-		}else{
-			self::retJson(Array("error"=>"PHP Callback.router::invalid arguments"));
+		} else {
+
+			self::retJson( Array( "error"=>"PHP Callback.router::invalid arguments" ) );
 		}
-	
+
 	}
-	
+
 	static function retJson(){
-	
-		if(!is_array(self::$CLBK)){
+
+		if ( ! is_array( self::$CLBK ) ) {
 
 			self::$CLBK['status'] = 'false';
 		}
-		
-		echo json_encode(self::$CLBK);
+
+		echo json_encode( self::$CLBK );
 	}
 
-	static function checkCaptchaClbk($PARAMS){
-
-
-		if($_SESSION['CAPTCHA'] == $PARAMS['CAPTCHA']){
-
-			self::$CLBK['status'] = 'success';
-		}else{
-
-			self::$CLBK['status'] = false;
-		}
-	}
-
-	static function changePassClbk($PARAMS){
+	static function changePassClbk( $PARAMS ) {
 
 		$PARAMS = $_REQUEST;
 		global $USER;
 		$date = new DateTime();
-		$pass = md5(date().$PARAMS['USER_LOGIN']);
-		$arResult = $USER->ChangePassword($PARAMS['USER_LOGIN'], $PARAMS['USER_CHECKWORD'], $pass, $pass);
-		if($arResult["TYPE"] == "OK") {
+		$pass = md5( date() . $PARAMS['USER_LOGIN'] );
 
-			$user = CUser::getList(($by=""),($order=""),Array("LOGIN"=>$PARAMS['USER_LOGIN']));
+		$arResult = $USER->ChangePassword( $PARAMS['USER_LOGIN'], $PARAMS['USER_CHECKWORD'], $pass, $pass );
+
+		if ( $arResult["TYPE"] == "OK" ) {
+
+			$user = CUser::getList( ( $by = "" ), ( $order = "" ), [ "LOGIN" => $PARAMS['USER_LOGIN'] ] );
 			$user = $user->Fetch();
-			
-			mail($user['EMAIL'], 'Новый пароль аккаунта на сайте '.$_SERVER['SERVER_NAME'], 'Новый пароль: '. $pass ."\r\nЛогин: " . $PARAMS['USER_LOGIN']);
+
+			mail( $user['EMAIL'], 'Новый пароль аккаунта на сайте ' . $_SERVER['SERVER_NAME'], 'Новый пароль: ' . $pass . "\r\nЛогин: " . $PARAMS['USER_LOGIN'] );
 		}
-			header("Location: /");
+
+		header("Location: /");
 	}
 
-	static function ChangeSortClbk($PARAMS){
+	static function captchaClbk() {
 
-		$_SESSION['CAT_SORT'] = $PARAMS['CAT_SORT'];
-	}
+		if ( empty( $_SESSION['CAPTCHA'] ) ) {
 
-	static function ChangeAdvTypeClbk($PARAMS){
+			$date = new DateTime();
+			$text = substr(md5( base64_encode( $date->format( "timestamp" ) ) ), 0, 6 );
+			$_SESSION['CAPTCHA'] = $text;
+		} else {
 
-		$_SESSION['ADV_TYPE'] = $PARAMS['ADV_TYPE'];
-	}
+			$text = $_SESSION['CAPTCHA'];
+		}
 
-	static function ChangeCatViewClbk($PARAMS){
-
-		$_SESSION['CAT_VIEW'] = $PARAMS['CAT_VIEW'];
-	}
-
-	static function sellerPhoneImgClbk($PARAMS){
-
-		if(!isset($PARAMS['ADV_ID']) && !is_numeric($PARAMS['ADV_ID'])) return false;
-
-		$adv = CHelper::element($PARAMS['ADV_ID'], 2, Array('PROPERTY_8'));
-
-		$text = $adv['PROPERTY_8_VALUE'];
-		
 		header("Content-type: image/png");
 		// Текст надписи
 
-		$block_len = mb_strlen($text)*10.5+20;
+		$block_len = mb_strlen($text)*12+10;
 		$im = imagecreatetruecolor($block_len, 30);
 
 		// Создание цветов
@@ -94,7 +75,7 @@ class CCallback{
 		imagefilledrectangle($im, 0, 0, $block_len, 29, $white);
 
 		// Замена пути к шрифту на пользовательский
-		$font =  TPL . '/fonts/ARIAL.TTF';
+		$font =  TPL . '/assets/fonts/ARIAL.TTF';
 
 		// Текст
 		imagettftext($im, 14, 0, 8, 22, $black, $font, $text);
@@ -102,32 +83,56 @@ class CCallback{
 		imagedestroy($im);
 	}
 
-		static function captchaClbk(){
+	/**
+	 * Basket item
+	 */
+	static function addItemClbk( $PARAMS ) {
 
-		$date = new DateTime();
-		$text = substr(md5(base64_encode($date->format("timestamp"))),0, 6);
-		
-		header("Content-type: image/png");
-		// Текст надписи
+		$elem = CIBlockElement::GetByID( $PARAMS['ID'] );
+		$elem = $elem->GetNext();
 
-		$block_len = mb_strlen($text)*12+20;
-		$im = imagecreatetruecolor($block_len, 30);
+		$arFields = array(
+		    "PRODUCT_ID" => $PARAMS['ID'],
+		    "PRODUCT_PRICE_ID" => 0,
+		    "PRICE" => $PARAMS['PRICE'],
+		    "CURRENCY" => "RUB",
+		    "QUANTITY" => $PARAMS['CNT'],
+		    "LID" => SITE_ID,
+		    "DELAY" => "N",
+		    "CAN_BUY" => "Y",
+		    "NAME" => $PARAMS['NAME'],
+	  	);
 
-		// Создание цветов
-		$white = imagecolorallocate($im, 246, 250, 253);
-		$grey = imagecolorallocate($im, 128, 128, 128);
-		$black = imagecolorallocate($im, 0, 0, 0);
-		imagefilledrectangle($im, 0, 0, $block_len, 29, $white);
+	 	CSaleBasket::Add($arFields);
 
-		// Замена пути к шрифту на пользовательский
-		$font =  TPL . '/fonts/ARIAL.TTF';
+		$prodsValues = CHelper::get_curr_basket( true );
 
-		// Текст
-		imagettftext($im, 14, 0, 8, 22, $black, $font, $text);
-		imagepng($im);
-		imagedestroy($im);
+		self::$CLBK['prods'] = $prodsValues;
+	}
 
-		$_SESSION['CAPTCHA'] = $text;
+	static function registerUserClbk( $PARAMS ) {
+
+		global $USER;
+
+		if ( empty( $_SESSION['CAPTCHA'] ) || empty( $PARAMS['fields']['DEF_CODE'] ) || $_SESSION['CAPTCHA'] != $PARAMS['fields']['DEF_CODE'] ) {
+
+			self::$CLBK['status'] = false;
+			self::$CLBK['error_message'] = 'Неправильно введён проверочный код';
+
+			return;
+		}
+
+		$PARAMS['fields']['GROUP_ID'] = [ $PARAMS['fields']['GROUP_ID'], 2, 5 ];
+		$PARAMS['fields']['LOGIN'] = $PARAMS['fields']['EMAIL'];
+
+		$user = new CUser;
+		$user_id = $user->Add( $PARAMS['fields'] );
+
+		self::$CLBK['status'] = $user_id;
+
+		$USER->Authorize( $user_id );
+
+		unset( $_SESSION['CAPTCHA'] );
 	}
 
 	static function registerUserClbk($PARAMS){
