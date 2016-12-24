@@ -90,19 +90,21 @@ class CHelper {
 		}
 	}
 
-	static function resizePic($pic, $width, $height, $attr_text = ''){
+	static function resizePic($pic, $width, $height, $attr_text = '', $returnRaw = false){
 
-		if(!empty($pic)&&(int)$width>0&&(int)$height>0){
-			$pic = CFile::ResizeImageGet($pic, array('width'=>$width, 'height'=>$height), BX_RESIZE_IMAGE_PROPORTIONAL, true);
-			return "<img  src='".$pic['src']."' ".$attr_text."/>";
-		}else{
+		if ( ! empty( $pic ) && ( int ) $width > 0 && ( int ) $height > 0 ) {
 
-			if(file_exists(TPL . '/img/nopic.png')){
+			$pic = CFile::ResizeImageGet( $pic, array( 'width' => $width, 'height' => $height ), BX_RESIZE_IMAGE_PROPORTIONAL, true );
 
-				return '<div class="nopic" style=\'width:' . $width . 'px; margin:0 auto;\'><div style=\'display:table-cell; vertical-align:middle;width:' . $width .'px; height: ' . $height . 'px;  text-align: center;\' class=\'resizedPicture\'><img style=\'max-width:100%;max-height:100%;min-height:initial; min-width:initial;height:auto\' src=\''. SITE_TEMPLATE_PATH . '/img/nopic.png\'></div></div>';
+			if ( $returnRaw ) {
+
+				return $pic;
+			} else {
+
+				return "<img  src='" . $pic['src'] . "' " . $attr_text . "/>";
 			}
-			return false;
 		}
+
 	}
 
 	static function moveUploadFile($POSTITEM){
