@@ -1,6 +1,5 @@
 <?php
 
-
 /**
 * Custom helping functions
 */

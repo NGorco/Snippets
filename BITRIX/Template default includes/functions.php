@@ -16,3 +16,8 @@ function pre($str){
 		print_r($str);
 	echo "</pre>";
 }
+
+function am_log($var) {
+
+	file_put_contents($_SERVER['DOCUMENT_ROOT'].'/log.txt', print_r($CML2_LINK, true), FILE_APPEND);
+}
