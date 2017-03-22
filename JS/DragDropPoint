@@ -1,0 +1,417 @@
+/**
+ * Vanilla JS Draggable and droppable
+ */
+!function() {
+
+    'use strict';
+
+    /**
+     * Draggable item
+     * 
+     * @param  {DOMnode} options.container - container of draggable item
+     * @param  {function} options.onDragStart - drag start callback
+     * @param  {function} options.onDrag - drag callback
+     * @param  {function} options.onDragEnd - drag end callback
+     * @param  {bool} options.dispatchDragEvents - will custom events be fired while mouse do smth
+     * @param  {bool} options.useDrop - will custom events be fired while mouse do smth
+     */
+    var draggable = function(options) {
+
+        this.handle = options.elem;
+        this.elem = options.elem;
+        this.elem.draggableItem = this;
+        this.onDragStart = typeof options.onDragStart == 'function' ? options.onDragStart : function() {};
+        this.onDrag = typeof options.onDrag == 'function' ? options.onDrag : function() {};
+        this.onDragEnd = typeof options.onDragEnd == 'function' ? options.onDragEnd : function() {};
+        this.dispatchDragEvents = ( options.dispatchDragEvents || options.useDrop ) || false;
+
+        var self = this;
+
+        this.selected = false;
+
+        if ( options.handler_selector != undefined ) {
+
+            this.handle = this.elem.querySelector(options.handler_selector);
+        }
+
+        var innerOffset = {x: 0, y: 0};
+            //containerOffset = {x: 0, y: 0};
+    
+        // Returns droppable DOM element        
+        this.getDropElement = function() {
+
+            var calc = this.elem.getBoundingClientRect();
+            var child = document.elementFromPoint(calc.left - 1, calc.top - 1);
+
+            if ( child == null ) return null;
+
+            var dropArea = null;
+
+            while ( ! dropArea && child != document ) {
+
+                if ( !! child.droppableItem ) {
+
+                    dropArea = child;
+                }
+
+                child = child.parentNode;
+            }
+
+            return dropArea;
+        }
+
+        // Returns element on which sort is based on
+        this.getDropSortElement = function() {
+
+            var calc = this.elem.getBoundingClientRect();
+            var child = document.elementFromPoint(calc.left - 1, calc.top - 1);
+
+            if ( child == null ) return null;
+
+            var fakeDrop = null;
+
+            while ( ! fakeDrop && child != document ) {
+
+                if ( !! child.draggableItem ) {
+
+                    fakeDrop = child;
+                }
+
+                child = child.parentNode;
+            }
+
+            return !! fakeDrop ? fakeDrop.draggableItem : fakeDrop;
+        }
+
+        /** Events */
+
+        /** Drag start */
+        this.handle.addEventListener('mousedown', function(e) {
+
+            e.stopPropagation();
+
+            self.selected = true;
+            self.elem.style.zIndex = 5;
+            var offsetParent = {top: 0, left: 0};
+
+            var calc = getComputedStyle(self.elem);
+
+            if ( calc.left == '0px' && calc.position == 'relative' ) {
+
+                offsetParent.left = self.elem.offsetLeft;
+            }
+
+            if ( calc.top == '0px' && calc.position == 'relative' ) {
+
+                offsetParent.top = self.elem.offsetTop;
+            }
+
+            // Get offsets           
+            innerOffset = {
+                x: pageC(e, 'x') - ( parseInt(calc.left) || 0 ) - offsetParent.left,
+                y: pageC(e, 'y') - ( parseInt(calc.top) || 0 ) - offsetParent.top
+            }
+
+            /*var container = self.elem.parentNode.getBoundingClientRect();
+
+            containerOffset = {
+                x: container.left,
+                y: container.top
+            }*/
+
+            var ev = {
+                draggedDOM: self.elem,
+                dragged: self,
+                mouseEv: e
+            }
+
+            self.onDragStart(ev);
+
+
+            document.addEventListener('mouseup', mouseUpHandler);
+            document.addEventListener('mousemove', mouseMoveHandler);
+        });
+
+        /** Drag */
+        function mouseMoveHandler(e) {
+
+        	if ( ! self.selected ) return;
+
+            e.stopPropagation();
+
+            var x_pos = - innerOffset.x + pageC(e, 'x');
+            var y_pos = - innerOffset.y + pageC(e, 'y');
+
+            self.elem.style.left = x_pos + 'px';
+            self.elem.style.top = y_pos + 'px';
+
+            var ev = {
+                mouseEv: e,
+                dragged: self,
+                draggedDOM: self.elem
+            }
+
+            self.onDrag(ev);
+
+            // if we use droppable
+            if ( ! self.dispatchDragEvents ) return;
+
+            document.dispatchEvent(new CustomEvent('notWillDropIn'));
+
+            var dropElem = self.getDropElement();
+
+            if ( dropElem != null ) {
+
+                var fake = self.getDropSortElement();
+
+                dropElem.dispatchEvent(new CustomEvent('WillDropIn', {
+                detail: {
+
+                    dragged: self,
+                    draggedDOM: self.elem,
+                    dropFake: fake || null,
+                    dropFakeDOM: !! fake ? fake.elem : null,
+                    mouseEv: e  
+                }
+            }));
+            }
+        }
+
+        /** Drag end */
+        function mouseUpHandler(e) {
+
+            e.stopPropagation();
+
+            self.selected = false;
+            self.elem.style.zIndex = 0;
+
+            var ev = {
+                mouseEv: e,
+                dragged: self,
+                draggedDOM: self.elem
+            };
+
+            self.onDragEnd(ev);
+
+            removeMouseUp();
+            document.removeEventListener('mousemove', mouseMoveHandler);
+
+            if ( self.dispatchDragEvents ) {
+
+                document.dispatchEvent(new CustomEvent('draggableEnd', {
+                    detail: ev
+                }));
+
+                var dropElem = self.getDropElement();
+
+                if ( dropElem != null ) {
+
+                    var fake = self.getDropSortElement();
+
+                    ev.dropFake = fake || null;
+                    ev.dropFakeDOM = !!fake ? fake.elem : null;
+
+                    dropElem.dispatchEvent(new CustomEvent('draggableDrop', {
+                        detail: ev
+                    }));
+                }
+
+                // Clear all WillDropIn flags
+                document.dispatchEvent(new CustomEvent('notWillDropIn'));
+            }
+        }
+
+        function removeMouseUp() { document.removeEventListener('mouseup', mouseUpHandler); }
+        function pageC(e, type) {
+
+            if ( type == 'x' ) {
+                
+                return document.all ? window.event.clientX : e.pageX;
+            } else {
+
+                return document.all ? window.event.clientY : e.pageY;
+            }
+        }
+    }
+
+    window.draggable = draggable;
+}();
+
+!function() {
+
+    'use strict';
+
+    /**
+     * Droppable class
+     * 
+     * @param  {elem} options.elem - draggable DOM node
+     * @param  {function} options.dragOver - drag over callback (when draggable over)
+     * @param  {function} options.onDrop - draggable ended drag over this droppable
+     * @param  {bool} options.dispatchDropEvent - create custom Drop event on this droppable
+     */
+    var droppable = function(options) {
+
+        this.elem = options.elem;
+        this.elem.droppableItem = this;
+        this.onDrop = options.onDrop || function(){};
+        this.onWillDropIn = options.onWillDropIn || function(){};
+        this.onNotWillDropIn = options.onNotWillDropIn || function(){};
+        this.dispatchDropEvent = options.dispatchDropEvent || false;
+        this.sortable = options.sortable || false;
+
+        this.isAttachedToDroppable =
+
+        this.getSortIndex = function(elem, fakeElem) {
+
+            var tmp = Array.from(this.elem.children);
+
+            if ( tmp.indexOf(elem) > -1 ) {
+
+                tmp.splice(tmp.indexOf(elem), 1);
+            }
+
+            var index = tmp.indexOf(fakeElem);
+
+            return index == -1 ? this.elem.children.length : index;
+        }
+
+        var self = this;
+
+        this.elem.addEventListener('WillDropIn', function(e) {
+
+            var ev = {
+                dropArea: self,
+                dropAreaDOM: self.elem,
+
+                dragged: e.detail.dragged,
+                draggedDOM: e.detail.draggedDOM,
+
+                dropFake: e.detail.dropFake,
+                dropFakeDOM: e.detail.dropFakeDOM
+            };
+
+            if ( self.sortable ) {
+
+                ev.sortIndex = self.getSortIndex(e.detail.draggedDOM, e.detail.dropFakeDOM);
+            }
+
+            self.onWillDropIn(ev);
+        });
+
+        document.addEventListener('notWillDropIn', function(e) {
+
+            self.WillDropIn = false;
+        	self.onNotWillDropIn({
+                dropArea: self,
+                dropAreaDOM: self.elem
+            });
+        });
+
+        this.elem.addEventListener('draggableDrop', function(e) {
+
+            var ev = {
+                dropArea: self,
+                dropAreaDOM: self.elem,
+
+                dropped: e.detail.dragged,
+                droppedDOM: e.detail.draggedDOM,
+
+                dropFake: e.detail.dropFake,
+                dropFakeDOM: e.detail.dropFakeDOM,
+
+                mouseEv: e.detail.mouseEv
+            }
+
+            if ( self.sortable ) {
+
+                ev.sortIndex = self.getSortIndex(e.detail.draggedDOM, e.detail.dropFakeDOM);
+            }
+
+            console.log(ev.sortIndex);
+
+    		self.onDrop(ev);
+
+    		if ( ! self.dispatchDropEvent ) return;
+
+    		self.elem.dispatchEvent(new CustomEvent('droppableDrop', {
+    			detail: ev
+    		}));
+        });
+    }
+
+    window.droppable = droppable;
+}();
+
+/**
+ * Extension of MouseEvent object.
+ *
+ * Provides EventDataTransfer object, with ability to
+ * save, clear and get custom data.
+ *
+ * Object stores in e.EventDataTransfer
+ */
+!function() {
+
+    if ( ! MouseEvent.prototype.EventDataTransfer ) {
+
+    	var EventDataTransfer = function() {
+
+            var data = {};
+            var priv = {};
+
+            data.clearData = function() {
+
+                priv = {};
+            }
+
+            data.setData = function(name, value) {
+
+                if ( ! priv[ name ] ) {
+
+                    priv[ name ] = value;
+                }
+
+                return true;
+            }
+
+            data.getData = function(name) {
+
+                if ( typeof name !== 'string' ) return false;
+                if ( ! priv[ name ] ) return null;
+
+                return priv[ name ];
+            }
+
+            return data;
+        }
+
+        CustomEvent.prototype.EventDataTransfer = MouseEvent.prototype.EventDataTransfer = new EventDataTransfer;
+    }
+}();
+
+/**
+ * parentsObj realization in Vanilla JS
+ */
+!(function() {
+
+    if ( ! Element.prototype.parentsObj ) {
+
+        Element.prototype.parentsObj = function(elementToCheck) {
+
+            var isParent = false;
+            var elem = this;
+
+            while ( ! isParent && elem != document.body ) {
+
+                if ( elem.parentNode == elementToCheck ) {
+
+                    isParent = true;
+                }
+
+                elem = elem.parentNode;
+            }
+
+            return isParent;
+        }
+    }
+})();
