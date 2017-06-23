@@ -74,7 +74,7 @@ function localDB(args) {
  *
  * Examples
 
- var tr = new localDB({dbName: 'ty'});
+ var myDB = new localDB({dbName: 'myDB'});
  var tl = [];
 
    tl.push(
@@ -86,10 +86,10 @@ OR
 
    tl.push("DROP TABLE IF EXISTS properties");
 
-   tr.doTransaction(tl)
- .then(function(results){
-    
- console.log(results)
- });
+   myDB.doTransaction(tl)
+        .then(function(results){
+
+            console.log(results)
+      });
 
  * */
