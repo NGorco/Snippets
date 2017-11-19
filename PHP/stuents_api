@@ -1,0 +1,77 @@
+<?php
+/**
+ * Students API class
+ */
+
+class Students {
+
+	function __construct() {
+
+
+		if ( isset( $_REQUEST['params'] ) ) {
+
+			$params = explode( '/', $_REQUEST['params'] );
+			$method = array_shift( $params );
+
+			if ( method_exists( $this, $method . 'Clbk' ) ) {
+
+				$this->{$method . 'Clbk'}($params);
+			} else {
+
+				http_response_code(405);
+			}
+		} else {
+
+			http_response_code(502);
+		}
+	}
+
+	function bad_r() {
+
+		http_response_code(400);
+		die();
+	}
+
+	function weatherClbk($params) {
+
+		if ( count( $params ) < 1 ) {
+
+			$this->bad_r();
+		}
+
+		// https://newsapi.org/sources sources list
+		echo @file_get_contents('http://api.openweathermap.org/data/2.5/weather?q=' . $params[0] . '&appid=68514fd044b787c49ff6b529d6973fe9');
+	}
+
+	function geoClbk($ip) {
+
+		echo @file_get_contents( 'https://freegeoip.net/json/' . $ip[0] );
+	}
+
+	function menuClbk() {
+
+		//
+	}
+
+	function newsClbk($params) {
+
+		if ( count( $params ) < 1 ) {
+
+			$this->bad_r();
+		}
+
+		echo @file_get_contents('https://newsapi.org/v1/articles?source=' . $params[0] . '&sortBy=top&apiKey=cc3a21bd57a1419f98dd6c908a404678');
+	}
+
+	function chartClbk() {
+
+		//
+	}
+
+	function searchClbk() {
+
+		//
+	}
+}
+
+new Students;
